@@ -1,5 +1,9 @@
-// Baseline UI overlay. Zaynab's version drops in here against the same
-// exported signature — do not change the signature without telling her.
+// Overlay UI. Exported signature is frozen — if a teammate's HUD replaces this
+// file it must keep mountPhoneUI's shape and the returned method set.
+//
+// Hard rule learned the expensive way: the root is pointer-events:none and only
+// genuinely interactive chrome opts back in. A full-screen element at opacity:0
+// still swallows every click on the 3D canvas underneath it.
 
 export type Role = "past" | "present";
 export type Phase = "coop" | "turned" | "ended";
@@ -16,42 +20,128 @@ export interface PhoneUI {
   destroy(): void;
 }
 
+const TOTAL_SECONDS = 300;
+
 const CSS = `
-.pl-root{position:fixed;inset:0;pointer-events:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;z-index:10}
-.pl-root *{box-sizing:border-box}
-.pl-phone{position:absolute;left:20px;bottom:20px;width:340px;max-height:46vh;display:flex;flex-direction:column;
-  background:rgba(12,12,14,.86);border:1px solid var(--pl-line);border-radius:10px;pointer-events:auto;overflow:hidden}
-.pl-phone-hd{padding:8px 12px;font-size:12px;letter-spacing:.14em;color:var(--pl-accent);border-bottom:1px solid var(--pl-line)}
-.pl-log{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:140px}
-.pl-msg{font-size:14px;line-height:1.4;max-width:88%;padding:6px 10px;border-radius:8px;color:#e8e6e2}
-.pl-me{align-self:flex-end;background:rgba(255,255,255,.10)}
-.pl-them{align-self:flex-start;background:var(--pl-them)}
-.pl-inrow{display:flex;border-top:1px solid var(--pl-line)}
-.pl-in{flex:1;background:transparent;border:0;outline:0;color:#f2f0ec;padding:11px 12px;font:inherit;font-size:14px}
-.pl-send{background:transparent;border:0;color:var(--pl-accent);padding:0 14px;cursor:pointer;font:inherit;font-size:13px}
-.pl-timer{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:30px;letter-spacing:.08em;
-  color:#f2f0ec;text-shadow:0 2px 12px #000}
-.pl-timer.crit{color:#ff5c4d;animation:plp 1s steps(2,end) infinite}
-@keyframes plp{50%{opacity:.35}}
-.pl-reset{position:absolute;top:18px;right:20px;pointer-events:auto;background:rgba(0,0,0,.6);
-  border:1px solid var(--pl-line);color:#e8e6e2;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;letter-spacing:.12em}
-.pl-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:#cfcac2;font-size:14px;
-  background:rgba(0,0,0,.55);padding:8px 16px;border-radius:6px;max-width:60vw;text-align:center}
-.pl-sab{position:absolute;right:20px;bottom:20px;pointer-events:auto;display:none;background:#2a0b0b;
-  border:1px solid #7d2020;color:#ff8a7a;padding:14px 20px;border-radius:8px;cursor:pointer;font:inherit;
-  font-size:13px;letter-spacing:.14em}
-.pl-sab.on{display:block}
-/* opacity:0 does NOT stop clicks — the hidden modal must be inert or it eats
-   every click on the 3D canvas underneath it. */
-.pl-modal{position:absolute;inset:0;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;
-  pointer-events:none;visibility:hidden;opacity:0;transition:opacity 1.1s ease;padding:40px}
+.pl-root{
+  position:fixed;inset:0;pointer-events:none;z-index:10;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  color:var(--ink);
+}
+.pl-root *{box-sizing:border-box;margin:0}
+
+/* Always-on vignette. Sells "you are inside a room", costs nothing. */
+.pl-vig{position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 200px 40px var(--vig);opacity:.85}
+
+/* ---- era badge, top left ------------------------------------------------ */
+.pl-era{position:absolute;top:26px;left:30px;line-height:1}
+.pl-year{font:400 46px/1 var(--mono);letter-spacing:.22em;color:var(--accent);opacity:.5}
+.pl-place{margin-top:8px;font:400 10px/1 var(--mono);letter-spacing:.34em;
+  color:var(--ink-dim);text-transform:uppercase}
+
+/* ---- timer, top centre -------------------------------------------------- */
+.pl-timerwrap{position:absolute;top:30px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:9px}
+.pl-timer{font:400 40px/1 var(--mono);letter-spacing:.12em;color:var(--ink);
+  text-shadow:0 2px 26px rgba(0,0,0,.9);font-variant-numeric:tabular-nums}
+.pl-bar{width:172px;height:1px;background:var(--rule);overflow:hidden}
+.pl-bar i{display:block;height:100%;width:100%;background:var(--accent);
+  transform-origin:left center;transition:transform .9s linear;opacity:.75}
+.pl-timerwrap.crit .pl-timer{color:#ff6a55;animation:plpulse 1s steps(2,end) infinite}
+.pl-timerwrap.crit .pl-bar i{background:#ff6a55;opacity:1}
+@keyframes plpulse{50%{opacity:.3}}
+
+/* ---- reset, top right. Required to be visible, not required to shout. --- */
+.pl-reset{position:absolute;top:32px;right:30px;pointer-events:auto;
+  background:transparent;border:1px solid var(--rule);color:var(--ink-dim);
+  padding:8px 15px;border-radius:2px;cursor:pointer;
+  font:400 10px/1 var(--mono);letter-spacing:.26em;
+  transition:color .2s,border-color .2s}
+.pl-reset:hover{color:var(--ink);border-color:var(--accent)}
+
+/* ---- the phone, bottom left -------------------------------------------- */
+.pl-phone{position:absolute;left:30px;bottom:30px;width:340px;max-height:44vh;
+  display:flex;flex-direction:column;pointer-events:auto;overflow:hidden;
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  border:1px solid var(--rule);border-radius:3px;
+  box-shadow:0 26px 60px rgba(0,0,0,.62)}
+.pl-hd{display:flex;align-items:center;gap:9px;padding:11px 14px;
+  border-bottom:1px solid var(--rule);
+  font:400 10px/1 var(--mono);letter-spacing:.24em;color:var(--ink-dim)}
+.pl-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 9px var(--accent);animation:plbreathe 2.6s ease-in-out infinite}
+@keyframes plbreathe{0%,100%{opacity:1}50%{opacity:.28}}
+.pl-hd .sp{margin-left:auto;letter-spacing:.2em;opacity:.62}
+
+.pl-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;
+  gap:11px;min-height:132px;scrollbar-width:thin}
+.pl-log:empty::after{content:"The line is open.";color:var(--ink-dim);
+  font:400 12px/1 var(--mono);letter-spacing:.1em;margin:auto;opacity:.5}
+.pl-msg{max-width:86%;padding:8px 12px;border-radius:3px;
+  font:400 14px/1.45 var(--mono);word-break:break-word}
+.pl-them{align-self:flex-start;background:var(--bubble-them);
+  color:var(--ink);border-left:2px solid var(--accent)}
+.pl-me{align-self:flex-end;background:rgba(255,255,255,.055);color:var(--ink-dim)}
+
+.pl-inrow{display:flex;align-items:center;border-top:1px solid var(--rule);
+  background:rgba(0,0,0,.28)}
+.pl-in{flex:1;background:transparent;border:0;outline:0;color:var(--ink);
+  padding:13px 14px;font:400 14px/1 var(--mono)}
+.pl-in::placeholder{color:var(--ink-dim);opacity:.55}
+.pl-send{background:transparent;border:0;color:var(--accent);cursor:pointer;
+  padding:13px 15px;font:400 10px/1 var(--mono);letter-spacing:.24em;opacity:.8}
+.pl-send:hover{opacity:1}
+
+/* ---- hint. Hidden entirely when empty, or it renders as a dead pill. ---- */
+.pl-hint{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);
+  font:400 14px/1.5 var(--serif);font-style:italic;color:var(--ink);
+  letter-spacing:.02em;max-width:46ch;text-align:center;
+  text-shadow:0 2px 18px rgba(0,0,0,.95);transition:opacity .35s}
+.pl-hint:empty{display:none}
+
+/* ---- sabotage ----------------------------------------------------------- */
+.pl-sab{position:absolute;right:30px;bottom:30px;pointer-events:auto;display:none;
+  background:rgba(46,8,8,.9);border:1px solid #8c2622;color:#ff9484;
+  padding:15px 22px;border-radius:3px;cursor:pointer;
+  font:400 11px/1 var(--mono);letter-spacing:.26em;
+  box-shadow:0 0 34px rgba(150,20,20,.3);transition:background .2s,color .2s}
+.pl-sab:hover{background:rgba(74,12,12,.96);color:#ffc4b8}
+.pl-sab.on{display:block;animation:plin .8s ease both}
+@keyframes plin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---- cards -------------------------------------------------------------- */
+.pl-modal{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;padding:6vw;background:rgba(4,4,6,.955);
+  pointer-events:none;visibility:hidden;opacity:0;transition:opacity 1.15s ease}
 .pl-modal.show{opacity:1;visibility:visible;pointer-events:auto}
-.pl-card{max-width:620px;text-align:center}
-.pl-card h1{font-size:15px;letter-spacing:.3em;color:#8c8880;margin:0 0 22px;font-weight:400}
-.pl-card p{font-size:27px;line-height:1.5;color:#f2f0ec;margin:0 0 30px}
-.pl-card small{font-size:12px;color:#6e6a63;letter-spacing:.12em}
-.pl-turned{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 130px rgba(120,0,0,.42);opacity:0;transition:opacity 3s}
+.pl-card{max-width:660px;text-align:center}
+.pl-card h1{font:400 11px/1 var(--mono);letter-spacing:.5em;color:var(--ink-dim);
+  margin-bottom:30px;text-transform:uppercase}
+.pl-card p{font:400 30px/1.48 var(--serif);color:#f4f2ee;margin-bottom:36px}
+.pl-card small{font:400 9px/1 var(--mono);letter-spacing:.3em;color:var(--ink-dim);
+  opacity:.6;text-transform:uppercase}
+
+/* ---- the turn. Past client only. --------------------------------------- */
+.pl-turned{position:absolute;inset:0;pointer-events:none;opacity:0;
+  transition:opacity 3.4s ease;
+  box-shadow:inset 0 0 190px 30px rgba(104,0,0,.5)}
 .pl-turned.on{opacity:1}
+
+/* ---- era palettes ------------------------------------------------------- */
+.pl-past{
+  --ink:#f2e6d2;--ink-dim:#a8927a;--accent:#e8a63c;
+  --rule:rgba(232,166,60,.26);--panel:rgba(26,18,10,.9);
+  --panel-hi:rgba(44,31,17,.9);--bubble-them:rgba(232,166,60,.14);
+  --vig:rgba(28,14,2,.72);
+}
+.pl-present{
+  --ink:#dfe6ec;--ink-dim:#7b8792;--accent:#79b6d9;
+  --rule:rgba(121,182,217,.24);--panel:rgba(10,14,18,.9);
+  --panel-hi:rgba(20,27,34,.9);--bubble-them:rgba(121,182,217,.14);
+  --vig:rgba(2,5,9,.78);
+}
 `;
 
 export function mountPhoneUI(
@@ -62,26 +152,39 @@ export function mountPhoneUI(
   style.textContent = CSS;
   document.head.appendChild(style);
 
-  const warm = opts.role === "past";
+  const past = opts.role === "past";
   const el = document.createElement("div");
-  el.className = "pl-root";
-  el.style.setProperty("--pl-accent", warm ? "#e0a93b" : "#7fa8c9");
-  el.style.setProperty("--pl-line", warm ? "rgba(224,169,59,.3)" : "rgba(127,168,201,.3)");
-  el.style.setProperty("--pl-them", warm ? "rgba(224,169,59,.18)" : "rgba(127,168,201,.18)");
+  el.className = "pl-root " + (past ? "pl-past" : "pl-present");
 
   el.innerHTML = `
+    <div class="pl-vig"></div>
     <div class="pl-turned"></div>
-    <div class="pl-timer">05:00</div>
+
+    <div class="pl-era">
+      <div class="pl-year">${past ? "1998" : "2026"}</div>
+      <div class="pl-place">${past ? "The kitchen" : "Twenty-eight years later"}</div>
+    </div>
+
+    <div class="pl-timerwrap">
+      <div class="pl-timer">05:00</div>
+      <div class="pl-bar"><i></i></div>
+    </div>
+
     <button class="pl-reset">RESET</button>
-    <div class="pl-hint"></div>
+
     <div class="pl-phone">
-      <div class="pl-phone-hd">${warm ? "1998 — LANDLINE" : "2026 — LANDLINE"}</div>
+      <div class="pl-hd">
+        <span class="pl-dot"></span><span>LINE OPEN</span>
+        <span class="sp">${past ? "1998" : "2026"}</span>
+      </div>
       <div class="pl-log"></div>
       <div class="pl-inrow">
         <input class="pl-in" placeholder="Say something..." maxlength="240" />
         <button class="pl-send">SEND</button>
       </div>
     </div>
+
+    <div class="pl-hint"></div>
     <button class="pl-sab">NAIL IT SHUT</button>
     <div class="pl-modal"><div class="pl-card"></div></div>
   `;
@@ -90,7 +193,9 @@ export function mountPhoneUI(
   const $ = <T extends Element>(s: string) => el.querySelector(s) as T;
   const log = $<HTMLDivElement>(".pl-log");
   const input = $<HTMLInputElement>(".pl-in");
+  const timerWrap = $<HTMLDivElement>(".pl-timerwrap");
   const timerEl = $<HTMLDivElement>(".pl-timer");
+  const barFill = $<HTMLElement>(".pl-bar i");
   const hintEl = $<HTMLDivElement>(".pl-hint");
   const modal = $<HTMLDivElement>(".pl-modal");
   const card = $<HTMLDivElement>(".pl-card");
@@ -104,7 +209,10 @@ export function mountPhoneUI(
     input.value = "";
   };
   $<HTMLButtonElement>(".pl-send").onclick = send;
-  input.onkeydown = (e) => { if (e.key === "Enter") send(); };
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") send();
+    e.stopPropagation(); // typing "w"/"a"/"s"/"d" must not walk the room
+  };
   $<HTMLButtonElement>(".pl-reset").onclick = opts.onReset;
   modal.onclick = () => modal.classList.remove("show");
 
@@ -121,38 +229,43 @@ export function mountPhoneUI(
       }
       log.scrollTop = log.scrollHeight;
     },
+
     setTimer(s) {
       const c = Math.max(0, Math.floor(s));
       timerEl.textContent =
         String(Math.floor(c / 60)).padStart(2, "0") + ":" + String(c % 60).padStart(2, "0");
-      timerEl.classList.toggle("crit", c <= 60);
+      barFill.style.transform = `scaleX(${Math.max(0, Math.min(1, c / TOTAL_SECONDS))})`;
+      timerWrap.classList.toggle("crit", c <= 60);
     },
+
     setPhase(p) {
-      // Returning to "coop" means a reset happened — on EITHER client. Clear
-      // every end-state artifact so the remote screen doesn't keep its card up.
+      // Back to "coop" means a reset happened, possibly on the OTHER client.
+      // Clear every end-state artifact or the remote screen keeps its card up.
       if (p === "coop") {
         modal.classList.remove("show");
         turned.classList.remove("on");
         sab.classList.remove("on");
       }
       // Only the past player's world curdles. The present player must not know.
-      if (p === "turned" && opts.role === "past") {
+      if (p === "turned" && past) {
         turned.classList.add("on");
         sab.classList.add("on");
       }
     },
+
     showObjectiveCard(title, body) {
-      card.innerHTML =
-        `<h1>${title}</h1><p>${body}</p><small>CLICK TO CONTINUE</small>`;
+      card.innerHTML = `<h1>${title}</h1><p>${body}</p><small>Click to continue</small>`;
       modal.classList.add("show");
     },
+
     showEnding(type) {
       card.innerHTML =
         type === "escaped"
-          ? `<h1>2026</h1><p>The door opens. You were told the truth.</p><small>CLICK TO CONTINUE</small>`
-          : `<h1>2026</h1><p>The panel was sealed twenty-eight years ago.<br/>It was always going to be sealed.</p><small>CLICK TO CONTINUE</small>`;
+          ? `<h1>2026</h1><p>The door opens.<br/>You were told the truth.</p><small>Click to continue</small>`
+          : `<h1>2026</h1><p>The panel was sealed twenty-eight years ago.<br/>It was always going to be sealed.</p><small>Click to continue</small>`;
       modal.classList.add("show");
     },
+
     setHint(t) { hintEl.textContent = t; },
     onSabotage(cb) { sabCb = cb; sab.onclick = () => sabCb(); },
     destroy() { el.remove(); style.remove(); },
