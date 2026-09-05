@@ -84,6 +84,24 @@ export function createScene(canvas: HTMLCanvasElement, era: Era): SceneHandle {
   back.position.set(0, H / 2, -D / 2);
   scene.add(back);
 
+  // World Labs / Marble backdrop for this era, dropped onto the wall the player
+  // faces. Entirely optional: if the file is missing or fails to decode the
+  // wall simply stays its flat era colour and nothing else changes.
+  new THREE.TextureLoader().load(
+    era === "past" ? "/models/backdrop_past.jpg" : "/models/backdrop_present.jpg",
+    (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const m = back.material as THREE.MeshStandardMaterial;
+      m.map = tex;
+      // Not pure white: the backdrop is scenery, and the interactables have to
+      // stay the most legible things on screen.
+      m.color.setHex(era === "past" ? 0x8e8574 : 0x5a636b);
+      m.needsUpdate = true;
+    },
+    undefined,
+    () => console.warn("[backdrop] not loaded for era", era)
+  );
+
   const left = new THREE.Mesh(new THREE.PlaneGeometry(D, H), mat(P.wall));
   left.rotation.y = Math.PI / 2;
   left.position.set(-W / 2, H / 2, 0);
