@@ -38,6 +38,8 @@ const PALETTE = {
 } as const;
 
 export interface SceneHandle {
+  three: { scene: THREE.Scene; camera: THREE.Camera; renderer: THREE.WebGLRenderer };
+  getVisual(key: string): THREE.Object3D | null;
   render(): void;
   applyState(state: ObjState): void;
   onPick(cb: (key: string) => void): void;
@@ -335,6 +337,11 @@ export function createScene(canvas: HTMLCanvasElement, era: Era): SceneHandle {
   }
 
   return {
+    three: { scene, camera, renderer },
+    getVisual: (k: string) => {
+      const proxy = proxyByKey.get(k);
+      return proxy ? proxyOf.get(proxy) ?? null : null;
+    },
     render,
     applyState,
     setHeld,

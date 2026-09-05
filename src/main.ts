@@ -3,6 +3,7 @@ import { api } from "../convex/_generated/api";
 import { createScene, type Era } from "./scene";
 import { mountPhoneUI, type Msg } from "./ui/phone";
 import { mountAudio } from "./audio";
+import { mountAging } from "./effects/aging";
 import "./style.css";
 
 type Id = string;
@@ -42,6 +43,7 @@ if (!sessionId) {
 // --- game -------------------------------------------------------------------
 function start(sessionId: Id, role: Era, code: string | null) {
   const scene = createScene(canvas, role);
+  const aging = mountAging(scene.three.scene, scene.three.camera, scene.three.renderer);
   audio = mountAudio(role);
   // Autoplay stays blocked until a real gesture; unlock on the first one we see.
   const unlockAudio = () => {
@@ -57,6 +59,7 @@ function start(sessionId: Id, role: Era, code: string | null) {
   let phase: "coop" | "turned" | "ended" = "coop";
   let timerEndsAt = Date.now() + 300000;
   let flipScheduled = false;
+  let prevWorld: Record<string, string> | null = null;
   // Derived from server state, never stored locally: a refresh must not strand the key.
   const isHeld = () =>
     role === "past" ? world.brass_key === "held" : world.brass_key === "taken";
@@ -88,8 +91,24 @@ function start(sessionId: Id, role: Era, code: string | null) {
 
   // --- live subscriptions: this is the time machine -------------------------
   client.onUpdate(api.game.getWorld, { sessionId: sessionId as any, era: role }, (rows: any[]) => {
-    world = {};
-    for (const r of rows) world[r.key] = r.state;
+    const next: Record<string, string> = {};
+    for (const r of rows) next[r.key] = r.state;
+
+    // The aging pulse fires on the PRESENT client only, on exactly two
+    // transitions, and only against a previous state so it never misfires on
+    // join. It must NEVER fire on sealed_away / sealed_painted_over: after a
+    // sabotage her wall is deliberately identical to how it started, and a
+    // bloom flash is the one thing that would tell her she has been betrayed.
+    if (role === "present" && prevWorld) {
+      if (prevWorld.wall_panel !== "gap_visible" && next.wall_panel === "gap_visible") {
+        aging.pulse(scene.getVisual("wall_panel"));
+      }
+      if (prevWorld.brass_key !== "corroded_in_cavity" && next.brass_key === "corroded_in_cavity") {
+        aging.pulse(scene.getVisual("brass_key"));
+      }
+    }
+    prevWorld = next;
+    world = next;
     scene.applyState(world);
     scene.setHeld(isHeld() ? "brass_key" : null);
     updateHint();
@@ -186,8 +205,13 @@ function start(sessionId: Id, role: Era, code: string | null) {
   }
 
   // --- loop -----------------------------------------------------------------
+  let lastFrame = performance.now();
   (function tick() {
     requestAnimationFrame(tick);
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    lastFrame = now;
+    aging.update(dt);
     scene.render();
     const left = (timerEndsAt - Date.now()) / 1000;
     ui.setTimer(left);
