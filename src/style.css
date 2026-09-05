@@ -1,0 +1,17 @@
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0a0c10;overflow:hidden}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#lobby{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;background:#0a0c10;color:#e8e6e2;font-family:ui-monospace,Menlo,monospace;z-index:50}
+#lobby h1{font-size:44px;letter-spacing:.34em;margin:0 0 4px;font-weight:400}
+.tag{color:#8c8880;font-size:14px;margin:0 0 22px;letter-spacing:.06em}
+#lobby button{background:transparent;border:1px solid rgba(224,169,59,.5);color:#e0a93b;padding:13px 24px;
+  border-radius:6px;cursor:pointer;font:inherit;font-size:13px;letter-spacing:.12em}
+#lobby button:hover{background:rgba(224,169,59,.1)}
+.or{color:#4e4a44;font-size:12px;letter-spacing:.2em}
+.joinrow{display:flex;gap:10px}
+#code{background:transparent;border:1px solid rgba(127,168,201,.5);color:#7fa8c9;padding:13px 16px;
+  border-radius:6px;font:inherit;font-size:13px;width:110px;text-align:center;letter-spacing:.3em;text-transform:uppercase}
+.joinrow button{border-color:rgba(127,168,201,.5);color:#7fa8c9}
+.joinrow button:hover{background:rgba(127,168,201,.1)}
+#err{color:#ff5c4d;font-size:12px;height:16px}

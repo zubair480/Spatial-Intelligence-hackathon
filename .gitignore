@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env.local
+.env
+convex/_generated/
+docs/fallback.mp4
+*.log
+.DS_Store
