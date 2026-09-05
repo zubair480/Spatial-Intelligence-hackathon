@@ -16,6 +16,7 @@ export interface PhoneUI {
   showObjectiveCard(title: string, body: string): void;
   showEnding(type: "escaped" | "trapped"): void;
   setHint(text: string): void;
+  setCode(code: string): void;
   onSabotage(cb: () => void): void;
   destroy(): void;
 }
@@ -74,6 +75,11 @@ const CSS = `
   box-shadow:0 0 9px var(--accent);animation:plbreathe 2.6s ease-in-out infinite}
 @keyframes plbreathe{0%,100%{opacity:1}50%{opacity:.28}}
 .pl-hd .sp{margin-left:auto;letter-spacing:.2em;opacity:.62}
+.pl-code{display:none;margin-left:auto;padding:4px 9px;border:1px solid var(--accent);
+  border-radius:2px;color:var(--accent);font:400 11px/1 var(--mono);letter-spacing:.34em;
+  text-indent:.34em;background:rgba(0,0,0,.35)}
+.pl-code.on{display:inline-block;animation:plin .6s ease both}
+.pl-code.on + .sp{margin-left:10px}
 
 .pl-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;
   gap:11px;min-height:132px;scrollbar-width:thin}
@@ -116,6 +122,14 @@ const CSS = `
   justify-content:center;padding:6vw;background:rgba(4,4,6,.955);
   pointer-events:none;visibility:hidden;opacity:0;transition:opacity 1.15s ease}
 .pl-modal.show{opacity:1;visibility:visible;pointer-events:auto}
+/* The two endings must not look the same. Escape is warm and lifts; trapped
+   is cold and closes in. */
+.pl-modal.end-escaped{background:radial-gradient(ellipse at 50% 40%,rgba(64,48,18,.96),rgba(6,5,4,.98) 70%)}
+.pl-modal.end-trapped{background:radial-gradient(ellipse at 50% 60%,rgba(10,16,22,.97),rgba(2,3,5,.995) 70%)}
+.pl-modal.show .pl-card h1{animation:plreveal .9s .15s ease both}
+.pl-modal.show .pl-card p{animation:plreveal 1.1s .35s ease both}
+.pl-modal.show .pl-card small{animation:plreveal 1s 1.1s ease both}
+@keyframes plreveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .pl-card{max-width:660px;text-align:center}
 .pl-card h1{font:400 11px/1 var(--mono);letter-spacing:.5em;color:var(--ink-dim);
   margin-bottom:30px;text-transform:uppercase}
@@ -175,6 +189,7 @@ export function mountPhoneUI(
     <div class="pl-phone">
       <div class="pl-hd">
         <span class="pl-dot"></span><span>LINE OPEN</span>
+        <span class="pl-code"></span>
         <span class="sp">${past ? "1998" : "2026"}</span>
       </div>
       <div class="pl-log"></div>
@@ -201,6 +216,7 @@ export function mountPhoneUI(
   const card = $<HTMLDivElement>(".pl-card");
   const sab = $<HTMLButtonElement>(".pl-sab");
   const turned = $<HTMLDivElement>(".pl-turned");
+  const codeEl = $<HTMLSpanElement>(".pl-code");
 
   const send = () => {
     const t = input.value.trim();
@@ -242,7 +258,7 @@ export function mountPhoneUI(
       // Back to "coop" means a reset happened, possibly on the OTHER client.
       // Clear every end-state artifact or the remote screen keeps its card up.
       if (p === "coop") {
-        modal.classList.remove("show");
+        modal.classList.remove("show", "end-escaped", "end-trapped");
         turned.classList.remove("on");
         sab.classList.remove("on");
       }
@@ -254,11 +270,14 @@ export function mountPhoneUI(
     },
 
     showObjectiveCard(title, body) {
+      modal.classList.remove("end-escaped", "end-trapped");
       card.innerHTML = `<h1>${title}</h1><p>${body}</p><small>Click to continue</small>`;
       modal.classList.add("show");
     },
 
     showEnding(type) {
+      modal.classList.remove("end-escaped", "end-trapped");
+      modal.classList.add(type === "escaped" ? "end-escaped" : "end-trapped");
       card.innerHTML =
         type === "escaped"
           ? `<h1>2026</h1><p>The door opens.<br/>You were told the truth.</p><small>Click to continue</small>`
@@ -267,6 +286,10 @@ export function mountPhoneUI(
     },
 
     setHint(t) { hintEl.textContent = t; },
+    setCode(c) {
+      codeEl.textContent = c;
+      codeEl.classList.toggle("on", !!c);
+    },
     onSabotage(cb) { sabCb = cb; sab.onclick = () => sabCb(); },
     destroy() { el.remove(); style.remove(); },
   };

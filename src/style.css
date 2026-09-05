@@ -1,17 +1,68 @@
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0a0c10;overflow:hidden}
+html,body{margin:0;height:100%;background:#07080b;overflow:hidden}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block}
-#lobby{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;background:#0a0c10;color:#e8e6e2;font-family:ui-monospace,Menlo,monospace;z-index:50}
-#lobby h1{font-size:44px;letter-spacing:.34em;margin:0 0 4px;font-weight:400}
-.tag{color:#8c8880;font-size:14px;margin:0 0 22px;letter-spacing:.06em}
-#lobby button{background:transparent;border:1px solid rgba(224,169,59,.5);color:#e0a93b;padding:13px 24px;
-  border-radius:6px;cursor:pointer;font:inherit;font-size:13px;letter-spacing:.12em}
-#lobby button:hover{background:rgba(224,169,59,.1)}
-.or{color:#4e4a44;font-size:12px;letter-spacing:.2em}
-.joinrow{display:flex;gap:10px}
-#code{background:transparent;border:1px solid rgba(127,168,201,.5);color:#7fa8c9;padding:13px 16px;
-  border-radius:6px;font:inherit;font-size:13px;width:110px;text-align:center;letter-spacing:.3em;text-transform:uppercase}
-.joinrow button{border-color:rgba(127,168,201,.5);color:#7fa8c9}
-.joinrow button:hover{background:rgba(127,168,201,.1)}
-#err{color:#ff5c4d;font-size:12px;height:16px}
+
+/* ---------------------------------------------------------------------------
+   Lobby. The first thing a judge sees. The screen is split into the two eras
+   before anyone has clicked anything, so the premise reads before the copy.
+   --------------------------------------------------------------------------- */
+#lobby{position:fixed;inset:0;display:none;z-index:50;overflow:hidden;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  font-family:var(--mono);color:#ece7dd}
+
+.lb-half{position:absolute;top:0;bottom:0;width:50%}
+.lb-past{left:0;background:
+  radial-gradient(ellipse at 70% 40%, rgba(232,166,60,.20), transparent 60%),
+  linear-gradient(180deg,#1c1309,#0b0805)}
+.lb-present{right:0;background:
+  radial-gradient(ellipse at 30% 40%, rgba(121,182,217,.16), transparent 60%),
+  linear-gradient(180deg,#0a1016,#05070a)}
+.lb-seam{position:absolute;top:0;bottom:0;left:50%;width:1px;
+  background:linear-gradient(180deg,transparent,rgba(255,255,255,.14) 30%,rgba(255,255,255,.14) 70%,transparent)}
+
+.lb-inner{position:relative;width:100%;height:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;padding:40px 24px;text-align:center}
+
+.lb-kicker{font-size:10px;letter-spacing:.42em;text-transform:uppercase;color:#8a8478;opacity:.8}
+.lb-title{margin:0;font-weight:400;font-size:clamp(44px,7vw,82px);letter-spacing:.32em;
+  line-height:1;color:#f4efe6;text-shadow:0 2px 40px rgba(0,0,0,.8);
+  animation:lb-in 1.2s ease both}
+.lb-tag{margin:2px 0 26px;font:italic 400 clamp(15px,1.6vw,19px)/1.55 var(--serif);
+  color:#c9c2b4;animation:lb-in 1.2s .15s ease both}
+@keyframes lb-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.lb-cards{display:flex;gap:22px;align-items:stretch;animation:lb-in 1.2s .3s ease both}
+.lb-card{position:relative;width:300px;padding:26px 24px 22px;border-radius:4px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+  background:rgba(0,0,0,.34);border:1px solid var(--lb-line);color:#ece7dd;
+  font:inherit;cursor:default;transition:border-color .2s,background .2s,transform .2s}
+button.lb-card{cursor:pointer}
+button.lb-card:hover{background:rgba(0,0,0,.5);border-color:var(--lb-accent);transform:translateY(-2px)}
+.lb-card-past{--lb-accent:#e8a63c;--lb-line:rgba(232,166,60,.32)}
+.lb-card-present{--lb-accent:#79b6d9;--lb-line:rgba(121,182,217,.30)}
+
+.lb-year{font-size:38px;letter-spacing:.2em;color:var(--lb-accent);line-height:1}
+.lb-role{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#9b958a;margin-bottom:12px}
+.lb-cta{font-size:13px;letter-spacing:.16em;color:#f4efe6;margin-top:auto}
+.lb-note{font:italic 400 12px/1.5 var(--serif);color:#8f8a80;margin-top:10px;min-height:18px}
+.lb-note.bad{color:#ff7a6a;font-style:normal}
+
+.lb-joinrow{display:flex;gap:8px;width:100%;margin-top:auto}
+#code{flex:0 0 96px;background:rgba(0,0,0,.4);border:1px solid var(--lb-line);color:#dfe6ec;
+  padding:12px 0;border-radius:3px;font:inherit;font-size:16px;text-align:center;
+  letter-spacing:.34em;text-transform:uppercase;outline:0;transition:border-color .2s}
+#code:focus{border-color:var(--lb-accent)}
+#code::placeholder{color:#5a6670;letter-spacing:.2em}
+#join{flex:1;white-space:nowrap;background:transparent;border:1px solid var(--lb-line);color:var(--lb-accent);
+  padding:12px 10px;border-radius:3px;cursor:pointer;font:inherit;font-size:13px;letter-spacing:.12em;
+  transition:background .2s,border-color .2s}
+#join:hover{background:rgba(121,182,217,.10);border-color:var(--lb-accent)}
+
+.lb-foot{margin-top:22px;font-size:10px;letter-spacing:.2em;color:#6e6a63;text-transform:uppercase;
+  animation:lb-in 1.2s .45s ease both}
+
+@media (max-width:720px){
+  .lb-cards{flex-direction:column;width:100%;max-width:340px}
+  .lb-card{width:100%}
+}

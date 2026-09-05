@@ -7,17 +7,40 @@
   </head>
   <body>
     <canvas id="c"></canvas>
+
     <div id="lobby">
-      <h1>PARTY LINE</h1>
-      <p class="tag">One house. Two years. One of you is lying.</p>
-      <button id="create">START A GAME &mdash; you are 1998</button>
-      <div class="or">or</div>
-      <div class="joinrow">
-        <input id="code" placeholder="CODE" maxlength="4" />
-        <button id="join">JOIN &mdash; you are 2026</button>
+      <div class="lb-half lb-past"></div>
+      <div class="lb-half lb-present"></div>
+      <div class="lb-seam"></div>
+
+      <div class="lb-inner">
+        <div class="lb-kicker">A two-player thriller</div>
+        <h1 class="lb-title">PARTY&nbsp;LINE</h1>
+        <p class="lb-tag">One house. Twenty-eight years apart.<br/>One of you is lying.</p>
+
+        <div class="lb-cards">
+          <button id="create" class="lb-card lb-card-past">
+            <span class="lb-year">1998</span>
+            <span class="lb-role">You are in the past</span>
+            <span class="lb-cta">Start a game &rarr;</span>
+            <span class="lb-note">You'll get a four-letter code for your partner.</span>
+          </button>
+
+          <div class="lb-card lb-card-present">
+            <span class="lb-year">2026</span>
+            <span class="lb-role">You are in the present</span>
+            <div class="lb-joinrow">
+              <input id="code" placeholder="CODE" maxlength="4" autocomplete="off" spellcheck="false" />
+              <button id="join">Join &rarr;</button>
+            </div>
+            <span class="lb-note" id="err">Enter the code your partner gives you.</span>
+          </div>
+        </div>
+
+        <div class="lb-foot">Open both on one screen, side by side. Watch cause and effect at the same time.</div>
       </div>
-      <div id="err"></div>
     </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

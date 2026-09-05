@@ -25,7 +25,9 @@ let audio: ReturnType<typeof mountAudio> | null = null;
     const sessionId = await client.mutation(api.game.joinSession, { code });
     location.search = `?s=${sessionId}&role=present`;
   } catch {
-    (document.getElementById("err") as HTMLDivElement).textContent = "No game with that code.";
+    const err = document.getElementById("err") as HTMLElement;
+    err.textContent = "No game with that code.";
+    err.classList.add("bad");
   }
 };
 
@@ -78,7 +80,7 @@ function start(sessionId: Id, role: Era, code: string | null) {
     },
   });
 
-  if (code) ui.setHint(`Give your partner this code: ${code}`);
+  if (code) ui.setCode(code);
   audio.playRing();
 
   ui.onSabotage(() => {
@@ -137,6 +139,7 @@ function start(sessionId: Id, role: Era, code: string | null) {
     if (s.phase !== phase) {
       phase = s.phase;
       ui.setPhase(phase);
+      updateHint();
       // A reset can be pressed on either client; both must clear local latches.
       if (phase === "coop") {
         endShown = false;
