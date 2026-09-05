@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>asset self-test</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #0e1013; color: #e8e8e8;
+        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      body { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
+      #summary { padding: 20px; overflow-y: auto; border-right: 1px solid #24272d; }
+      #summary h1 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase;
+        margin: 0 0 16px; color: #9aa0a6; }
+      #summary .row { margin: 6px 0; }
+      #summary .row > span { display: inline-block; min-width: 96px; color: #8b9198; }
+      #summary code { color: #cfd3d8; }
+      .good { color: #5ad67d; } .bad { color: #ff5b5b; } .muted { color: #9aa0a6; }
+      details { margin-top: 14px; } summary { cursor: pointer; color: #9aa0a6; }
+      ul { margin: 8px 0 0; padding-left: 18px; } li { margin: 2px 0; }
+      .note { margin-top: 18px; color: #6d737a; font-size: 12px; }
+      #stage { position: relative; min-width: 0; }
+      #stage canvas { display: block; width: 100%; height: 100%; }
+      @media (max-width: 720px) { body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        #summary { border-right: 0; border-bottom: 1px solid #24272d; } }
+    </style>
+  </head>
+  <body>
+    <aside id="summary"><h1>asset self-test</h1><p class="muted">loading…</p></aside>
+    <main id="stage"></main>
+    <script type="module" src="/src/assets/selftest.ts"></script>
+  </body>
+</html>

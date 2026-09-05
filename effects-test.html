@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aging effect test</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; background: #0e1013; color: #e8e8e8;
+        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      #stage { position: fixed; inset: 0; }
+      #stage canvas { display: block; width: 100%; height: 100%; }
+      #panel { position: fixed; top: 16px; left: 16px; z-index: 1; display: flex;
+        flex-direction: column; gap: 8px; align-items: flex-start;
+        background: rgba(14,16,19,.82); border: 1px solid #24272d; border-radius: 8px; padding: 14px; }
+      #panel h1 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+        margin: 0 0 4px; color: #9aa0a6; }
+      button { font: inherit; color: #e8e8e8; background: #1b1f25; border: 1px solid #333840;
+        border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+      button:hover { background: #242a32; }
+      #status { color: #8b9198; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="panel">
+      <h1>aging effect</h1>
+      <button id="pulse-cube">pulse(cube)</button>
+      <button id="pulse-null">pulse(null)</button>
+      <button id="destroy">destroy()</button>
+      <div id="status">ready</div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { mountAging } from "/src/effects/aging.ts";
+
+      const stage = document.getElementById("stage");
+      const status = document.getElementById("status");
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(stage.clientWidth, stage.clientHeight);
+      stage.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x14161a);
+
+      const camera = new THREE.PerspectiveCamera(45, stage.clientWidth / stage.clientHeight, 0.1, 100);
+      camera.position.set(2.4, 1.8, 4.2);
+      camera.lookAt(0, 0.4, 0);
+
+      scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x2a2118, 1.2));
+      const key = new THREE.DirectionalLight(0xffd9b0, 2.2);
+      key.position.set(3, 5, 4);
+      scene.add(key);
+
+      // The grey cube under test.
+      const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.65 })
+      );
+      cube.position.set(0, 0.4, 0);
+      scene.add(cube);
+
+      // Saturated props, so the full-frame desaturate is visible.
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(12, 12),
+        new THREE.MeshStandardMaterial({ color: 0x2f4f7a, roughness: 0.9 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+
+      for (const [x, z, color] of [[-1.6, -0.6, 0xc0392b], [1.7, -0.9, 0x2e8b57], [-0.4, 1.6, 0xb8860b]]) {
+        const prop = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 1.1, 0.5),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.7 })
+        );
+        prop.position.set(x, 0.55, z);
+        scene.add(prop);
+      }
+
+      const aging = mountAging(scene, camera, renderer);
+
+      document.getElementById("pulse-cube").addEventListener("click", () => {
+        aging.pulse(cube);
+        status.textContent = "pulse(cube)";
+      });
+      document.getElementById("pulse-null").addEventListener("click", () => {
+        aging.pulse(null);
+        status.textContent = "pulse(null) — full-frame only";
+      });
+      document.getElementById("destroy").addEventListener("click", () => {
+        aging.destroy();
+        status.textContent = "destroyed — pulse() is now inert";
+      });
+
+      addEventListener("resize", () => {
+        renderer.setSize(stage.clientWidth, stage.clientHeight);
+        camera.aspect = stage.clientWidth / stage.clientHeight;
+        camera.updateProjectionMatrix();
+      });
+
+      const clock = new THREE.Clock();
+      renderer.setAnimationLoop(() => {
+        const dt = clock.getDelta();
+        cube.rotation.y += dt * 0.35;
+        aging.update(dt);
+        renderer.render(scene, camera);
+      });
+    </script>
+  </body>
+</html>

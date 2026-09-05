@@ -1,0 +1,34 @@
+{
+  "objects": {
+    "brass_key": {
+      "past": {
+        "on_counter": { "url": "/models/brass_key_new.glb", "fitSize": 0.12 },
+        "held": null,
+        "in_cavity": { "url": "/models/brass_key_new.glb", "fitSize": 0.12 },
+        "pocketed": null
+      },
+      "present": {
+        "absent": null,
+        "corroded_in_cavity": { "url": "/models/brass_key_corroded.glb", "fitSize": 0.12 },
+        "sealed_away": null,
+        "never_existed": null
+      }
+    },
+    "wall_panel": {
+      "past": {
+        "closed": { "url": "/models/wall_panel_closed.glb", "fitSize": 0.45 },
+        "open": { "url": "/models/wall_panel_open.glb", "fitSize": 0.45 },
+        "nailed_shut": { "url": "/models/wall_panel_nailed.glb", "fitSize": 0.45 }
+      },
+      "present": {
+        "painted_over": { "url": "/models/wall_panel_sealed.glb", "fitSize": 0.45 },
+        "gap_visible": { "url": "/models/wall_panel_open.glb", "fitSize": 0.45 },
+        "sealed_painted_over": { "url": "/models/wall_panel_sealed.glb", "fitSize": 0.45 }
+      }
+    }
+  },
+  "backdrops": {
+    "past": null,
+    "present": null
+  }
+}
